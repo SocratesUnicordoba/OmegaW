@@ -333,7 +333,7 @@ function aplicarIdioma() {
   set('#abrir-informe', T('btnInforme'));
   set('#sesion-cambiar', T('cambiar'));
   set('#login-tit', T('loginTit'));
-  set('#login-form .modal-sub', 'Δt · ' + T('lema'));
+  set('#login-form .modal-sub', 'ω · ' + T('lema'));
   set('label[for="f-nombre"]', T('lblNombre')); ph('#f-nombre', T('phNombre'));
   set('label[for="f-materia"]', T('lblMateria')); ph('#f-materia', T('phMateria'));
   set('label[for="f-carrera"]', T('lblCarrera'));
