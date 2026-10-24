@@ -316,6 +316,7 @@ reg({
   buttons: [{ label: '▶ Simular', primary: true, fn: 'run' },
   { label: 'f = corte', fn: () => setVals({ f: Math.max(10, Math.min(2000, Math.round(1 / (2 * Math.PI * V('R') * V('C') * 1e-6)))) }) }],
   views: [
+    { id: 'v0', title: 'Figura 4.6 · los dos montajes RC, con las tensiones instantáneas', h: 290 },
     { id: 'v1', title: 'Tensiones en el tiempo: fuente, condensador y resistencia', h: 300 },
     { id: 'v2', title: 'Respuesta en frecuencia (escala logarítmica): los dos filtros', h: 310 },
     { id: 'v3', title: 'Amplitudes a las frecuencias del enunciado', html: true },
@@ -339,8 +340,33 @@ reg({
     const cur1 = [], cur2 = [];
     for (let lg = 0; lg <= 5; lg += .02) { const q = 10 ** lg; cur1.push([lg, gC(q)]); cur2.push([lg, gR(q)]); }
     const FS = [10, 50, 100, 160, 200, 500, 1000, 5000, 10000];
+    // Figura 4.6: la misma malla con los dos elementos intercambiados. La salida se
+    // toma siempre en el elemento vertical, que es donde se pone el osciloscopio.
+    const esquema = tn => {
+      const cv = $('v0'); if (!cv) return;
+      const c = CIR.limpia(cv);
+      const i = Math.max(0, Math.min(P.length - 1, Math.round(tn / T * (P.length - 1))));
+      const tt = P[i][0], q = P[i][1], vs = Vs(tt), vc = Vc(q), vr = vs - vc;
+      const Imax = V0 / R, fase = (tt * f) % 1, Irel = dQ(q, tt) / (Imax || 1);
+      const top = 74, bot = 206, ancho = 236;
+      [[40, 'bajos'], [430, 'altos']].forEach(([L, tipo]) => {
+        const Rr = L + ancho, serie = tipo === 'bajos' ? 'R' : 'C', salida = tipo === 'bajos' ? 'C' : 'R';
+        const colSerie = serie === 'R' ? COL.b : COL.a, colSal = salida === 'C' ? COL.a : COL.b;
+        CIR.fuente(c, L, top, bot - top, false, '#ffffffcc', 'Vs');
+        (serie === 'R' ? CIR.resistor : CIR.condensador)(c, L, top, ancho, true, colSerie, serie === 'R' ? `R = ${R} Ω` : `C = ${(C * 1e6).toFixed(1)} µF`);
+        (salida === 'C' ? CIR.condensador : CIR.resistor)(c, Rr, top, bot - top, false, colSal, salida === 'C' ? `C = ${(C * 1e6).toFixed(1)} µF` : `R = ${R} Ω`);
+        CIR.hilo(c, L, bot, Rr, bot);
+        CIR.corriente(c, L + 20, top, Rr - 20, top, Irel, fase, COL.d);
+        CIR.corriente(c, Rr - 20, bot, L + 20, bot, Irel, fase, COL.d);
+        CIR.sonda(c, Rr, top, colSal); CIR.sonda(c, Rr, bot, colSal);
+        CIR.etiqueta(c, (L + Rr) / 2, 34, tipo === 'bajos' ? 'salida en C → pasa bajos' : 'salida en R → pasa altos', colSal, 'center', 13);
+        CIR.etiqueta(c, (L + Rr) / 2, bot + 30, `V_salida = ${fmt(tipo === 'bajos' ? vc : vr, 3)} V`, colSal, 'center', 13);
+        CIR.etiqueta(c, (L + Rr) / 2, bot + 50, `V_s = ${fmt(vs, 3)} V`, '#9fb0c8', 'center', 11);
+      });
+    };
     const draw = fr => {
       const tn = T * fr, cut = thin(P.filter(p => p[0] <= tn + 1e-12));
+      esquema(tn);
       plot($('v1'), [
         { pts: cut.map(p => [p[0] * 1e3, Vs(p[0])]), color: '#ffffff99', dash: [4, 4], width: 1.2, label: 'V_s fuente' },
         { pts: cut.map(p => [p[0] * 1e3, Vc(p[1])]), color: COL.a, width: 2, label: 'V_C condensador' },
@@ -357,7 +383,12 @@ reg({
     go(anim, draw, 2600);
     $('v3').innerHTML = tbl(['f (Hz)', 'V_C/V_s', 'V_R/V_s', 'Deja pasar'],
       FS.map(q => [q, gC(q).toFixed(4), gR(q).toFixed(4), q < fc ? 'el condensador' : 'la resistencia'])) +
-      `<p class="hint">Con R = ${R} Ω y C = ${(C * 1e6).toFixed(1)} µF la frecuencia de corte es f = 1/(2πRC) = <b>${fc.toFixed(1)} Hz</b>, donde las dos salidas valen 1/√2 ≈ 0.707. Para el Δt: a 10 Hz basta con 10⁻⁴ s, pero a 10 kHz el periodo es mil veces más corto, así que hace falta un Δt unas mil veces menor para tener el mismo número de pasos por ciclo.</p>`;
+      `<p class="hint">Con R = ${R} Ω y C = ${(C * 1e6).toFixed(1)} µF la frecuencia de corte es f = 1/(2πRC) = <b>${fc.toFixed(1)} Hz</b>, donde las dos salidas valen 1/√2 ≈ 0.707. Para el Δt: a 10 Hz basta con 10⁻⁴ s, pero a 10 kHz el periodo es mil veces más corto, así que hace falta un Δt unas mil veces menor para tener el mismo número de pasos por ciclo.</p>` +
+      tbl(['Elemento', 'Caída de tensión', 'Símbolo', 'Unidades'], [
+        ['resistencia', 'V_R = I·R', 'resistencia R', 'ohmios (Ω)'],
+        ['condensador', 'V_C = Q/C', 'capacidad C', 'faradios (F)'],
+        ['bobina', 'V_L = L·dI/dt', 'inductancia L', 'henrios (H)'],
+      ]) + '<p class="hint">Tabla 4.1 del libro: las caídas de tensión en los tres elementos básicos. Q es la carga en coulombios de una placa del condensador e I es la corriente en amperios. La ley de las mallas de Kirchhoff obliga a que la suma de estas caídas iguale la tensión de la fuente, y de ahí salen las ecuaciones de todos los circuitos de esta sección.</p>';
     S(tbl(['', 'medido', 'teórico'], [
       ['Amplitud V_C', fmt(Ac, 4), fmt(V0 * gC(f), 4)],
       ['Amplitud V_R', fmt(Ar, 4), fmt(V0 * gR(f), 4)],
@@ -385,6 +416,7 @@ reg({
   { label: 'Carga completa (T ≫ τ)', fn: () => setVals({ f: Math.max(2, Math.round(1 / (20 * V('R') * V('C') * 1e-6))) }) },
   { label: 'Integrador (T ≪ τ)', fn: () => setVals({ f: Math.min(400, Math.round(1 / (.2 * V('R') * V('C') * 1e-6))) }) }],
   views: [
+    { id: 'v0', title: 'Circuito RC con fuente de onda cuadrada, con las tensiones instantáneas', h: 280 },
     { id: 'v1', title: 'V_s (onda cuadrada) y V_C (condensador)', h: 320 },
     { id: 'v2', title: 'Corriente I = dQ/dt', half: true, w: 440, h: 250 },
     { id: 'v3', title: 'Medio ciclo en detalle, con la exponencial teórica', half: true, w: 440, h: 250 },
@@ -402,8 +434,26 @@ reg({
     // medio ciclo del final para el detalle
     const t0 = Math.max(0, (Math.floor(T / per) - 1) * per), medio = P.filter(p => p[0] >= t0 && p[0] <= t0 + per / 2);
     const Vini = medio.length ? medio[0][1] / C : 0;
+    // misma malla RC, con el rótulo de la fuente indicando el signo actual de la onda
+    const esquema = tn => {
+      const cv = $('v0'); if (!cv) return;
+      const c = CIR.limpia(cv);
+      const i = Math.max(0, Math.min(P.length - 1, Math.round(tn / T * (P.length - 1))));
+      const tt = P[i][0], vc = P[i][1] / C, I = P[i][2], vs = Vs(tt), vr = vs - vc;
+      const iz = 200, de = 600, ar = 70, ab = 190, Ipk = V0 / R || 1;
+      CIR.fuente(c, iz, ar, ab - ar, false, '#ffffffcc', vs >= 0 ? '+V₀' : '−V₀');
+      CIR.resistor(c, iz, ar, de - iz, true, COL.b, `R = ${R} Ω`);
+      CIR.condensador(c, de, ar, ab - ar, false, COL.a, `C = ${(C * 1e6).toFixed(2)} µF`);
+      CIR.hilo(c, iz, ab, de, ab);
+      CIR.corriente(c, iz + 30, ar, de - 30, ar, I / Ipk, (tt / (1 / f) * 4) % 1, COL.d);
+      CIR.corriente(c, de - 30, ab, iz + 30, ab, I / Ipk, (tt / (1 / f) * 4) % 1, COL.d);
+      CIR.etiqueta(c, (iz + de) / 2, 32, `${I >= 0 ? 'cargando' : 'descargando'}  ·  I = ${fmt(I, 4)} A`, COL.d, 'center', 14);
+      [['V_s', vs, '#e6e9f5'], ['V_R', vr, COL.b], ['V_C', vc, COL.a]]
+        .forEach(([n, v, col], k) => CIR.etiqueta(c, 270 + k * 130, 245, `${n} = ${fmt(v, 3)} V`, col, 'center', 13));
+    };
     const draw = fr => {
       const tn = T * fr, cut = thin(P.filter(p => p[0] <= tn + 1e-12));
+      esquema(tn);
       plot($('v1'), [
         { pts: cut.map(p => [p[0] * 1e3, Vs(p[0])]), color: '#ffffff88', width: 1.2, label: 'V_s onda cuadrada' },
         { pts: cut.map(p => [p[0] * 1e3, p[1] / C]), color: COL.a, width: 2, label: 'V_C condensador' },
@@ -445,6 +495,7 @@ reg({
   { label: 'Q alto (R = 10 Ω)', fn: () => setVals({ R: 10 }) },
   { label: 'Q bajo (R = 300 Ω)', fn: () => setVals({ R: 300 }) }],
   views: [
+    { id: 'v0', title: 'Figura 4.5 · circuito RLC en serie, con las caídas de tensión instantáneas', h: 300 },
     { id: 'v1', title: 'Curva de resonancia I_max(ω) y su anchura a 1/√2', h: 320 },
     { id: 'v2', title: 'Corriente I(t) con la ω elegida', half: true, w: 440, h: 260 },
     { id: 'v3', title: 'Caídas de tensión en R, L y C', half: true, w: 440, h: 260 },
@@ -465,8 +516,28 @@ reg({
     for (let q = w0; q > w0 / 50; q *= .999) if (Imax(q) < obj) { wlo = q; break; }
     for (let q = w0; q < w0 * 50; q *= 1.001) if (Imax(q) < obj) { whi = q; break; }
     const Qmed = w0 / (whi - wlo);
+    // Figura 4.5: la fuente a la izquierda, R arriba, C a la derecha y L abajo,
+    // con la misma disposición del libro y las caídas de tensión en vivo.
+    const esquema = tn => {
+      const cv = $('v0'); if (!cv) return;
+      const c = CIR.limpia(cv);
+      const i = Math.max(0, Math.min(P.length - 1, Math.round(tn / T * (P.length - 1))));
+      const tt = P[i][0], q = P[i][1], I = P[i][2];
+      const vR = R * I, vC = q / C, vS = V0 * Math.cos(w * tt), vL = vS - vR - vC;
+      const iz = 150, de = 650, ar = 84, ab = 216, Ipk = Imax(w) || 1;
+      CIR.fuente(c, iz, ar, ab - ar, false, '#ffffffcc', 'Vs');
+      CIR.resistor(c, iz, ar, de - iz, true, COL.b, `R = ${R} Ω`);
+      CIR.condensador(c, de, ar, ab - ar, false, COL.a, `C = ${(C * 1e6).toFixed(1)} µF`);
+      CIR.bobina(c, iz, ab, de - iz, true, COL.d, `L = ${(L * 1e3).toFixed(1)} mH`);
+      CIR.corriente(c, iz + 30, ar, de - 30, ar, I / Ipk, (tt * w / (2 * Math.PI)) % 1, COL.c);
+      CIR.corriente(c, de - 30, ab, iz + 30, ab, I / Ipk, (tt * w / (2 * Math.PI)) % 1, COL.c);
+      CIR.etiqueta(c, (iz + de) / 2, 40, `I = ${fmt(I, 4)} A     ω/ω₀ = ${fmt(w / w0, 3)}`, COL.c, 'center', 14);
+      [['V_s', vS, '#e6e9f5'], ['V_R', vR, COL.b], ['V_C', vC, COL.a], ['V_L', vL, COL.d]]
+        .forEach(([n, v, col], k) => CIR.etiqueta(c, 180 + k * 150, 272, `${n} = ${fmt(v, 3)} V`, col, 'center', 13));
+    };
     const draw = fr => {
       const tn = T * fr, cut = thin(P.filter(p => p[0] <= tn + 1e-12));
+      esquema(tn);
       plot($('v1'), [
         { pts: curva, color: COL.a, label: 'I_max(ω)' },
         { pts: [[wlo, obj], [whi, obj]], color: COL.c, width: 2, label: `Δω = ${fmt(whi - wlo, 4)}` },

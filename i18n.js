@@ -279,7 +279,7 @@ const TRM = {
     desc: '(a) Simulate the voltages of an RC filter with R = 1000 Ω and C = 1.0 µF, and find the steady state amplitude across the resistor and across the capacitor for f = 10, 50, 100, 160, 200, 500, 1000, 5000 and 10000 Hz. (b) The output depends on where the oscilloscope is connected: plot the ratio of output to input amplitude on a logarithmic scale. Which frequencies does each arrangement pass? Which is low pass and which is high pass?',
     eq: 'R·dQ/dt + Q/C = V₀cos(ωt)<br>V_C = Q/C  (output at the capacitor → low pass)<br>V_R = V_s − V_C  (output at the resistor → high pass)<br>f_cutoff = 1/(2πRC)',
     labels: { R: 'R (Ω)', C: 'C (µF)', f: 'source f (Hz)', V0: 'V₀ (V)', nper: 'Periods simulated' },
-    views: { v1: 'Voltages in time: source, capacitor and resistor', v2: 'Frequency response (logarithmic scale): the two filters', v3: 'Amplitudes at the frequencies of the statement' },
+    views: { v0: 'Figure 4.6 · the two RC arrangements, with the instantaneous voltages', v1: 'Voltages in time: source, capacitor and resistor', v2: 'Frequency response (logarithmic scale): the two filters', v3: 'Amplitudes at the frequencies of the statement' },
     buttons: ['▶ Run', 'f = cutoff'],
   },
   p413: {
@@ -288,7 +288,7 @@ const TRM = {
     desc: 'The source becomes a periodic square wave. With C = 1.0 µF and R = 3000 Ω, plot the voltage across the capacitor. Make sure the period is long enough for the capacitor to charge fully in half a cycle. What is the time dependence of V_C while charging and while discharging?',
     eq: 'R·dQ/dt + Q/C = V_s(t)  (square wave)<br>Charging:    V_C = V₀(1 − e^(−t/τ))<br>Discharging: V_C = V₀·e^(−t/τ)<br>τ = RC',
     labels: { R: 'R (Ω)', C: 'C (µF)', f: 'square wave f (Hz)', V0: 'V₀ (V)', nper: 'Periods simulated', expo: 'Overlay the theoretical exponentials' },
-    views: { v1: 'V_s (square wave) and V_C (capacitor)', v2: 'Current I = dQ/dt', v3: 'Half a cycle in detail, with the theoretical exponential' },
+    views: { v0: 'RC circuit driven by a square wave, with the instantaneous voltages', v1: 'V_s (square wave) and V_C (capacitor)', v2: 'Current I = dQ/dt', v3: 'Half a cycle in detail, with the theoretical exponential' },
     buttons: ['▶ Run', 'Full charge (T ≫ τ)', 'Integrator (T ≪ τ)'],
   },
   p414: {
@@ -297,7 +297,7 @@ const TRM = {
     desc: '(a) With R = 100 Ω, C = 3.0 µF and L = 2 mH, compute the voltage drops across the three elements and the current. Obtain the resonance curve by plotting I_max against ω and locate the resonant frequency. (b) The sharpness of the resonance is measured by the quality factor Q = ω₀/Δω, where Δω is the width between the points at which I_max falls to 1/√2 of the maximum.',
     eq: 'L·d²Q/dt² + R·dQ/dt + Q/C = V₀cos(ωt)<br>ω₀ = 1/√(LC)<br>I_max(ω) = V₀ / √[R² + (ωL − 1/ωC)²]<br>Q = ω₀L/R = (1/R)√(L/C)',
     labels: { R: 'R (Ω)', L: 'L (mH)', C: 'C (µF)', V0: 'V₀ (V)', rel: 'ω / ω₀', nper: 'Periods simulated' },
-    views: { v1: 'Resonance curve I_max(ω) and its width at 1/√2', v2: 'Current I(t) at the chosen ω', v3: 'Voltage drops across R, L and C' },
+    views: { v0: 'Figure 4.5 · series RLC circuit, with the instantaneous voltage drops', v1: 'Resonance curve I_max(ω) and its width at 1/√2', v2: 'Current I(t) at the chosen ω', v3: 'Voltage drops across R, L and C' },
     buttons: ['▶ Run', 'At resonance', 'High Q (R = 10 Ω)', 'Low Q (R = 300 Ω)'],
   },
   p415: {

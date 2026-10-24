@@ -93,6 +93,108 @@ function plot(cv, series, o = {}) {
   return { X, Y, c };
 }
 
+// ---------- Esquemas de circuito (tabla 4.1 y figuras 4.5–4.6) ----------
+// Primitivas para dibujar los elementos del libro con el símbolo que allí se usa.
+// Todas reciben el contexto, el punto de entrada y la longitud, y devuelven el
+// punto de salida, de modo que se encadenan recorriendo la malla.
+const CIR = {
+  gris: '#9fb0c8',
+  hilo(c, x0, y0, x1, y1, col) {
+    c.strokeStyle = col || CIR.gris; c.lineWidth = 2; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+    return [x1, y1];
+  },
+  // zigzag de seis dientes, horizontal (dx=1) o vertical (dx=0).
+  // El cuerpo tiene tamaño fijo y se centra en el tramo: así el símbolo se ve
+  // igual aunque el hilo sea largo, como en las figuras del libro.
+  resistor(c, x, y, L, horiz, col, etq) {
+    const n = 6, cuerpo = Math.min(L * .9, 84), pata = (L - cuerpo) / 2, a = 11;
+    c.strokeStyle = col || CIR.gris; c.lineWidth = 2; c.lineJoin = 'round'; c.beginPath();
+    if (horiz) {
+      c.moveTo(x, y); c.lineTo(x + pata, y);
+      for (let i = 0; i < n; i++) c.lineTo(x + pata + cuerpo * (i + .5) / n, y + (i % 2 ? a : -a));
+      c.lineTo(x + pata + cuerpo, y); c.lineTo(x + L, y);
+    } else {
+      c.moveTo(x, y); c.lineTo(x, y + pata);
+      for (let i = 0; i < n; i++) c.lineTo(x + (i % 2 ? a : -a), y + pata + cuerpo * (i + .5) / n);
+      c.lineTo(x, y + pata + cuerpo); c.lineTo(x, y + L);
+    }
+    c.stroke();
+    if (etq) CIR.etiqueta(c, horiz ? x + L / 2 : x + a + 14, horiz ? y + a + 16 : y + L / 2, etq, col, horiz ? 'center' : 'left');
+    return horiz ? [x + L, y] : [x, y + L];
+  },
+  // dos placas paralelas separadas por el dieléctrico
+  condensador(c, x, y, L, horiz, col, etq) {
+    const sep = 7, placa = 18, pata = (L - sep) / 2;
+    c.strokeStyle = col || CIR.gris; c.lineWidth = 2; c.beginPath();
+    if (horiz) {
+      c.moveTo(x, y); c.lineTo(x + pata, y); c.moveTo(x + L - pata, y); c.lineTo(x + L, y);
+      c.moveTo(x + pata, y - placa / 2); c.lineTo(x + pata, y + placa / 2);
+      c.moveTo(x + pata + sep, y - placa / 2); c.lineTo(x + pata + sep, y + placa / 2);
+    } else {
+      c.moveTo(x, y); c.lineTo(x, y + pata); c.moveTo(x, y + L - pata); c.lineTo(x, y + L);
+      c.moveTo(x - placa / 2, y + pata); c.lineTo(x + placa / 2, y + pata);
+      c.moveTo(x - placa / 2, y + pata + sep); c.lineTo(x + placa / 2, y + pata + sep);
+    }
+    c.stroke();
+    if (etq) CIR.etiqueta(c, horiz ? x + L / 2 : x + placa / 2 + 12, horiz ? y + placa / 2 + 16 : y + L / 2, etq, col, horiz ? 'center' : 'left');
+    return horiz ? [x + L, y] : [x, y + L];
+  },
+  // cinco semicircunferencias, también de tamaño fijo
+  bobina(c, x, y, L, horiz, col, etq) {
+    const n = 5, cuerpo = Math.min(L * .9, 90), pata = (L - cuerpo) / 2, r = cuerpo / (2 * n);
+    c.strokeStyle = col || CIR.gris; c.lineWidth = 2; c.beginPath();
+    if (horiz) {
+      c.moveTo(x, y); c.lineTo(x + pata, y);
+      for (let i = 0; i < n; i++) c.arc(x + pata + r * (2 * i + 1), y, r, Math.PI, 0, false);
+      c.moveTo(x + pata + cuerpo, y); c.lineTo(x + L, y);
+    } else {
+      c.moveTo(x, y); c.lineTo(x, y + pata);
+      for (let i = 0; i < n; i++) c.arc(x, y + pata + r * (2 * i + 1), r, -Math.PI / 2, Math.PI / 2, false);
+      c.moveTo(x, y + pata + cuerpo); c.lineTo(x, y + L);
+    }
+    c.stroke();
+    if (etq) CIR.etiqueta(c, horiz ? x + L / 2 : x + r + 14, horiz ? y - r - 10 : y + L / 2, etq, col, horiz ? 'center' : 'left');
+    return horiz ? [x + L, y] : [x, y + L];
+  },
+  // fuente de tensión: circunferencia con su rótulo dentro
+  fuente(c, x, y, L, horiz, col, etq) {
+    const r = 20, pata = (L - 2 * r) / 2;
+    c.strokeStyle = col || CIR.gris; c.lineWidth = 2; c.beginPath();
+    if (horiz) { c.moveTo(x, y); c.lineTo(x + pata, y); c.moveTo(x + L - pata, y); c.lineTo(x + L, y); }
+    else { c.moveTo(x, y); c.lineTo(x, y + pata); c.moveTo(x, y + L - pata); c.lineTo(x, y + L); }
+    c.stroke();
+    const cx = horiz ? x + L / 2 : x, cy = horiz ? y : y + L / 2;
+    c.beginPath(); c.arc(cx, cy, r, 0, 2 * Math.PI); c.stroke();
+    c.fillStyle = col || '#e6e9f5'; c.font = 'bold 13px JetBrains Mono';
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(etq || 'Vs', cx, cy);
+    c.textBaseline = 'alphabetic';
+    return horiz ? [x + L, y] : [x, y + L];
+  },
+  etiqueta(c, x, y, txt, col, align = 'center', tam = 12) {
+    c.fillStyle = col || '#e6e9f5'; c.font = tam + 'px JetBrains Mono';
+    c.textAlign = align; c.textBaseline = 'middle'; c.fillText(txt, x, y); c.textBaseline = 'alphabetic';
+  },
+  // punto de medida: marca dónde se conecta el osciloscopio
+  sonda(c, x, y, col, etq) {
+    c.fillStyle = col; c.beginPath(); c.arc(x, y, 4.5, 0, 2 * Math.PI); c.fill();
+    if (etq) CIR.etiqueta(c, x, y - 15, etq, col, 'center', 11);
+  },
+  // flecha de corriente que recorre el hilo; fase ∈ [0,1) desplaza los puntos
+  corriente(c, x0, y0, x1, y1, I, fase, col) {
+    const n = 4, s = Math.sign(I) || 1, mag = Math.min(1, Math.abs(I));
+    if (mag < .02) return;
+    c.fillStyle = col;
+    for (let i = 0; i < n; i++) {
+      const u = (((i / n) + s * fase) % 1 + 1) % 1;
+      c.globalAlpha = mag * (.35 + .65 * Math.sin(Math.PI * u));
+      c.beginPath(); c.arc(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, 3, 0, 2 * Math.PI); c.fill();
+    }
+    c.globalAlpha = 1;
+  },
+  limpia(cv) { const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height); return c; },
+};
+
 // ---------- Vistas 3D (proyección ortográfica rotable) ----------
 function cam(cv, init) {
   if (!cv._cam) {
